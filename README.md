@@ -1,92 +1,94 @@
-# http
+# Breeze HTTP
 
+High-performance asynchronous HTTP client for Breeze services. It is a thin
+instrumented facade over `reqwest`: clients share reqwest's connection pool,
+HTTP/2 implementation, DNS, and rustls transport instead of maintaining a
+second transport stack.
 
+## Ownership
 
-## Getting started
+Create one `Client` per transport policy, not one per host. Client-wide policy
+includes TLS identity and roots, proxy, redirects, connect timeout, default
+headers, DNS behavior, and pool settings. The same client can safely serve many
+hosts; reqwest partitions pooled connections by origin.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+```rust,no_run
+use std::time::Duration;
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+use brz_http::Client;
 
-## Add your files
+# async fn example() -> Result<(), brz_http::Error> {
+let client = Client::builder()
+    .connect_timeout(Duration::from_secs(2))
+    .read_timeout(Duration::from_secs(6))
+    .pool_idle_timeout(Duration::from_secs(90))
+    .pool_max_idle_per_host(16)
+    .build()?;
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+let config = client.endpoint("http://config.intra.example.com/api/config")?;
+let response = config
+    .get()
+    .query(&[("service", "abtest")])
+    .send()
+    .await?;
 
+let body = response.bytes().await?;
+# let _ = body;
+# Ok(())
+# }
 ```
-cd existing_repo
-git remote add origin https://git.intra.example.com/platform/breeze/http.git
-git branch -M master
-git push -uf origin master
+
+`Client` and `Endpoint` are cheap to clone. Keep them in application state and
+reuse them. Use different clients only when their client-wide policies differ.
+Per-request total timeout can be supplied through `RequestBuilder::timeout`.
+
+The default transport timeouts match api-commons `ApacheHttpClient()`:
+
+- connect timeout: 400 ms;
+- per-read timeout: 400 ms, reset after each successful socket read;
+- no total request timeout.
+
+api-commons also waits at most 400 ms for its bounded connection pool. Reqwest
+does not expose the same active-connection lease model, so Breeze does not
+pretend `pool_max_idle_per_host` is an equivalent active-connection limit.
+
+For an uncommon reqwest option, `ClientBuilder::configure` and
+`RequestBuilder::configure` preserve the Breeze wrapper:
+
+```rust,no_run
+# use brz_http::Client;
+let client = Client::builder()
+    .configure(|builder| builder.redirect(brz_http::reqwest::redirect::Policy::none()))
+    .build()?;
+# Ok::<(), brz_http::Error>(())
 ```
 
-## Integrate with your tools
+## Metrics
 
-- [ ] [Set up project integrations](https://git.intra.example.com/platform/breeze/http/-/settings/integrations)
+Enable the optional feature in the consuming crate:
 
-## Collaborate with your team
+```toml
+brz-http = { package = "http", path = "crates/breeze/http", features = ["metrics"] }
+```
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Creating an `Endpoint` eagerly registers two ProfileUtil-compatible rows. A
+request records both rows once, whether reqwest reused a connection or followed
+redirects internally:
 
-## Test and Deploy
+- `HTTP`, name `<scheme>://<host>/<path>`, slow threshold 50 ms;
+- `HTTP`, name `all_<scheme>://<host>/<path>`, slow threshold 200 ms.
 
-Use the built-in continuous integration in GitLab.
+Query parameters, fragments, and URL credentials are excluded from the default
+metric name. Use `Client::endpoint_named` for routes with dynamic path values.
+The endpoint stores direct metric handles, so the send path performs no metric
+registry lookup and allocates no metrics metadata. Recording adds relaxed
+atomic counter updates only. Transport errors, body-read errors, and cancelled
+requests increment `error_count`.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Like api-commons, HTTP 4xx/5xx status codes are completed HTTP exchanges rather
+than transport errors. The regular URL timing stops when response headers
+arrive. The `all_` timing includes response-body consumption; dropping a body
+before EOF or encountering a body read error records failure for both rows.
 
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+The `metrics` feature is opt-in. Without it, the metrics dependency and all
+timing/counter work compile out.

@@ -1,0 +1,36 @@
+[package]
+name = "http"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Efficient pooled async HTTP client for Breeze services"
+license = "Apache-2.0"
+
+[workspace]
+members = []
+resolver = "3"
+
+[dependencies]
+bytes = "1"
+http-types = { package = "http", version = "1" }
+reqwest = { version = "0.12.28", default-features = false, features = ["http2", "rustls-tls"] }
+serde = "1"
+brz-metrics = { package = "metrics", path = "../metrics", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[features]
+default = []
+metrics = ["dep:brz-metrics"]
+json = ["reqwest/json"]
+gzip = ["reqwest/gzip"]
+brotli = ["reqwest/brotli"]
+deflate = ["reqwest/deflate"]
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
