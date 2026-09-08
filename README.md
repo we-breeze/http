@@ -25,7 +25,7 @@ let client = Client::builder()
     .pool_max_idle_per_host(16)
     .build()?;
 
-let config = client.endpoint("http://config.intra.example.com/api/config")?;
+let config = client.endpoint("http://config.example.com/api/config")?;
 let response = config
     .get()
     .query(&[("service", "abtest")])
@@ -68,7 +68,7 @@ let client = Client::builder()
 Enable the optional feature in the consuming crate:
 
 ```toml
-brz-http = { package = "http", path = "crates/breeze/http", features = ["metrics"] }
+http = { package = "brz-http", version = "0.0.3" }
 ```
 
 Creating an `Endpoint` eagerly registers two ProfileUtil-compatible rows. A
@@ -92,3 +92,13 @@ before EOF or encountering a body read error records failure for both rows.
 
 The `metrics` feature is opt-in. Without it, the metrics dependency and all
 timing/counter work compile out.
+
+## Releases
+
+CI runs formatting, Clippy, and tests. To publish, open **Actions → Publish → Run workflow** on `main`. Leave `retry_tag` empty to allocate the next `v0.0.x` tag. The workflow validates the code, commits the version, pushes the commit and tag atomically, and publishes to crates.io using the organization secret `CARGO_REGISTRY_TOKEN`.
+
+If publication fails after the tag was pushed, rerun with that existing tag in `retry_tag`. A normal push or pull request does not publish. Historical tags retain their original version numbers; use new release tags for registry packages.
+
+## License
+
+Licensed under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
