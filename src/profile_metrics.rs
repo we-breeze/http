@@ -166,6 +166,8 @@ impl ResponseProfile {
 
     #[cfg(not(feature = "metrics"))]
     #[inline]
+    // Keep the same method API as the metrics-enabled implementation.
+    #[allow(clippy::unused_self)]
     pub(crate) fn finish(&mut self, _success: bool) {}
 }
 
