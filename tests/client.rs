@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use http::{Client, DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT};
+use brz_http::{Client, DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 

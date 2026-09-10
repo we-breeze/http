@@ -68,7 +68,7 @@ let client = Client::builder()
 Enable the optional feature in the consuming crate:
 
 ```toml
-http = { package = "brz-http", version = "0.0.3" }
+brz-http = "0.0.4"
 ```
 
 Creating an `Endpoint` eagerly registers two ProfileUtil-compatible rows. A
@@ -102,3 +102,14 @@ If publication fails after the tag was pushed, rerun with that existing tag in `
 ## License
 
 Licensed under either [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
+
+## Crate naming
+
+The package name is `brz-http`; the Rust library name is `brz_http`.
+Use `brz_http::...` in Rust code. This replaces the previous `http`
+library name. Existing explicit dependency aliases remain supported.
+
+```toml
+[dependencies]
+brz-http = "0.0.4"
+```

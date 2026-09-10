@@ -37,4 +37,4 @@ all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 
 [lib]
-name = "http"
+name = "brz_http"
