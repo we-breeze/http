@@ -68,7 +68,7 @@ let client = Client::builder()
 Enable the optional feature in the consuming crate:
 
 ```toml
-brz-http = "0.0.4"
+brz-http = "0.0.5"
 ```
 
 Creating an `Endpoint` eagerly registers two ProfileUtil-compatible rows. A
@@ -111,5 +111,5 @@ library name. Existing explicit dependency aliases remain supported.
 
 ```toml
 [dependencies]
-brz-http = "0.0.4"
+brz-http = "0.0.5"
 ```

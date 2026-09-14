@@ -1,6 +1,6 @@
 [package]
 name = "brz-http"
-version = "0.0.4"
+version = "0.0.5"
 edition = "2024"
 rust-version = "1.85"
 description = "Efficient pooled async HTTP client for Breeze services"
@@ -16,7 +16,7 @@ bytes = "1"
 http-types = { package = "http", version = "1" }
 reqwest = { version = "0.12.28", default-features = false, features = ["http2", "rustls-tls"] }
 serde = "1"
-brz-metrics = { package = "brz-metrics", optional = true, version = "0.0.3" }
+brz-metrics = { package = "brz-metrics", optional = true, version = "=0.0.5" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
