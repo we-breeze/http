@@ -11,6 +11,8 @@ mod endpoint;
 mod profile_metrics;
 mod request;
 mod response;
+#[cfg(feature = "slow-log")]
+mod slow_log;
 
 pub use client::{Client, ClientBuilder, DEFAULT_CONNECT_TIMEOUT, DEFAULT_READ_TIMEOUT};
 pub use endpoint::Endpoint;

@@ -6,8 +6,8 @@ use bytes::Bytes;
 use crate::Result;
 use crate::profile_metrics::ResponseProfile;
 
-/// Streaming HTTP response that completes the `all_` profile metric when its
-/// body reaches EOF.
+/// Streaming HTTP response that completes its profile metric when the body
+/// reaches EOF.
 ///
 /// Read the body with [`Response::bytes`], [`Response::text`], or repeated
 /// [`Response::chunk`] calls. Dropping a response before EOF records a failed
@@ -90,25 +90,26 @@ impl Response {
         result
     }
 
-    /// Returns an error for HTTP 4xx/5xx while preserving api-commons metrics
-    /// semantics: receiving an HTTP status is a successful transport request.
+    /// Returns an error for HTTP 4xx/5xx. Because this consumes the response
+    /// before its body reaches EOF, the complete-request metric records a
+    /// failure.
     ///
     /// # Errors
     ///
     /// Returns a reqwest status error for HTTP 4xx/5xx.
     pub fn error_for_status(mut self) -> Result<Self> {
         if let Err(error) = self.inner().error_for_status_ref() {
-            self.profile.finish(true);
+            self.profile.finish(false);
             return Err(error);
         }
         Ok(self)
     }
 
-    /// Escapes to raw reqwest and completes profiling at response headers.
-    /// Prefer the body methods above when `all_` timing must include the body.
+    /// Escapes to raw reqwest. The wrapper can no longer observe response-body
+    /// completion, so the complete-request metric records a failure.
     #[must_use]
     pub fn into_reqwest(mut self) -> reqwest::Response {
-        self.profile.finish(true);
+        self.profile.finish(false);
         self.take_inner()
     }
 

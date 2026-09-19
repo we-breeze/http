@@ -153,7 +153,12 @@ impl Client {
     /// Returns a reqwest error when request execution fails.
     pub async fn execute(&self, request: Request) -> Result<Response> {
         let (request, profile) = request.into_parts();
-        profile.execute(&self.inner, request).await
+        #[cfg(feature = "slow-log")]
+        let observation = crate::slow_log::Observation::request(&request);
+        let result = profile.execute(&self.inner, request).await;
+        #[cfg(feature = "slow-log")]
+        observation.finish(&result);
+        result
     }
 
     /// Accesses the underlying reqwest client for an integration that the

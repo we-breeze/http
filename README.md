@@ -71,12 +71,9 @@ Enable the optional feature in the consuming crate:
 brz-http = "0.0.5"
 ```
 
-Creating an `Endpoint` eagerly registers two ProfileUtil-compatible rows. A
-request records both rows once, whether reqwest reused a connection or followed
-redirects internally:
+Creating an `Endpoint` eagerly registers one ProfileUtil-compatible row:
 
-- `HTTP`, name `<scheme>://<host>/<path>`, slow threshold 50 ms;
-- `HTTP`, name `all_<scheme>://<host>/<path>`, slow threshold 200 ms.
+- `HTTP`, name `<scheme>://<host>/<path>`, slow threshold 200 ms.
 
 Query parameters, fragments, and URL credentials are excluded from the default
 metric name. Use `Client::endpoint_named` for routes with dynamic path values.
@@ -85,13 +82,19 @@ registry lookup and allocates no metrics metadata. Recording adds relaxed
 atomic counter updates only. Transport errors, body-read errors, and cancelled
 requests increment `error_count`.
 
-Like api-commons, HTTP 4xx/5xx status codes are completed HTTP exchanges rather
-than transport errors. The regular URL timing stops when response headers
-arrive. The `all_` timing includes response-body consumption; dropping a body
-before EOF or encountering a body read error records failure for both rows.
+Timing includes response-body consumption. HTTP status codes alone do not fail
+the metric when the body is consumed normally. Dropping a body before EOF,
+calling `error_for_status` on a 4xx/5xx response, escaping to raw reqwest, or
+encountering a body-read error records failure because completion cannot be
+observed.
 
 The `metrics` feature is opt-in. Without it, the metrics dependency and all
 timing/counter work compile out.
+
+Enable `slow-log` to emit requests taking at least 1 second to `breeze.slow`.
+URL credentials, query parameters, and fragments are omitted; in-memory
+request bodies are capped at 2 KiB. Lines contain component, method, URL,
+status, elapsed time, request-body length, success, and finally the request body.
 
 ## Releases
 

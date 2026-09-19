@@ -64,7 +64,7 @@ async fn endpoints_on_one_client_reuse_the_origin_pool() {
 
 #[cfg(feature = "metrics")]
 #[tokio::test]
-async fn request_records_endpoint_and_body_complete_metrics_once() {
+async fn request_records_only_the_body_complete_metric() {
     use brz_metrics::Metric;
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -88,7 +88,6 @@ async fn request_records_endpoint_and_body_complete_metrics_once() {
         "http://breeze-http-profile-test-{}/status",
         std::process::id()
     );
-    let whole_name = format!("all_{metric_name}");
     let client = Client::builder()
         .configure(reqwest::ClientBuilder::no_proxy)
         .build()
@@ -99,24 +98,31 @@ async fn request_records_endpoint_and_body_complete_metrics_once() {
             metric_name.clone(),
         )
         .unwrap();
-    let endpoint_metric = Metric::http(&metric_name);
-    let whole_metric = Metric::http_all(&whole_name);
-
+    let complete_metric = Metric::http_all(&metric_name);
     let response = endpoint.get().send().await.unwrap();
     assert_eq!(response.status(), 503);
+    assert_eq!(complete_metric.snapshot().total, 0);
     assert_eq!(response.text().await.unwrap(), "failure");
 
-    let endpoint_snapshot = endpoint_metric.snapshot();
-    let whole_snapshot = whole_metric.snapshot();
-    assert_eq!(endpoint_snapshot.total, 1);
-    assert_eq!(endpoint_snapshot.success, 1);
-    assert_eq!(endpoint_snapshot.failure, 0);
-    assert_eq!(whole_snapshot.total, 1);
-    assert_eq!(whole_snapshot.success, 1);
-    assert_eq!(whole_snapshot.failure, 0);
+    let legacy_name = format!("all_{metric_name}");
+    let mut matching_names = Vec::new();
+    brz_metrics::visit(|name, kind, _| {
+        if kind == "HTTP" && (name == metric_name || name == legacy_name) {
+            matching_names.push(name.to_owned());
+        }
+    });
+    assert_eq!(
+        matching_names.as_slice(),
+        std::slice::from_ref(&metric_name)
+    );
+
+    let complete_snapshot = complete_metric.snapshot();
+    assert_eq!(complete_snapshot.total, 1);
+    assert_eq!(complete_snapshot.success, 1);
+    assert_eq!(complete_snapshot.failure, 0);
     assert!(
-        whole_snapshot.elapsed_ns >= endpoint_snapshot.elapsed_ns.saturating_add(50_000_000),
-        "all_ timing must include response-body consumption"
+        complete_snapshot.elapsed_ns >= 50_000_000,
+        "HTTP timing must include response-body consumption"
     );
     server.await.unwrap();
 }

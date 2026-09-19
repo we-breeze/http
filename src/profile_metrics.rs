@@ -1,7 +1,7 @@
 use reqwest::Url;
 
 #[cfg(feature = "metrics")]
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 #[cfg(feature = "metrics")]
 use brz_metrics::Metric;
@@ -11,8 +11,7 @@ use crate::response::Response;
 #[cfg(feature = "metrics")]
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ProfileMetrics {
-    endpoint: Metric,
-    whole: Metric,
+    complete: Metric,
 }
 
 #[cfg(not(feature = "metrics"))]
@@ -32,10 +31,8 @@ impl ProfileMetrics {
 
     #[cfg(feature = "metrics")]
     pub(crate) fn for_name(name: &str) -> Self {
-        let whole_name = format!("all_{name}");
         Self {
-            endpoint: Metric::http(name),
-            whole: Metric::http_all(&whole_name),
+            complete: Metric::http_all(name),
         }
     }
 
@@ -120,11 +117,7 @@ impl ProfileAttempt {
     #[inline]
     fn finish(&mut self, success: bool) {
         let elapsed = self.started.elapsed();
-        // api-commons leaves its first-stage timestamp at request start when
-        // no response headers arrive, producing a zero-duration endpoint row.
-        let endpoint_elapsed = if success { elapsed } else { Duration::ZERO };
-        self.metrics.endpoint.record(endpoint_elapsed, success);
-        self.metrics.whole.record(elapsed, success);
+        self.metrics.complete.record(elapsed, success);
         self.finished = true;
     }
 
@@ -133,7 +126,6 @@ impl ProfileAttempt {
         let profile = ResponseProfile {
             metrics: self.metrics,
             started: self.started,
-            headers_elapsed: self.started.elapsed(),
             finished: false,
         };
         self.finished = true;
@@ -145,7 +137,6 @@ impl ProfileAttempt {
 pub(crate) struct ResponseProfile {
     metrics: ProfileMetrics,
     started: Instant,
-    headers_elapsed: Duration,
     finished: bool,
 }
 
@@ -159,8 +150,9 @@ impl ResponseProfile {
         if self.finished {
             return;
         }
-        self.metrics.endpoint.record(self.headers_elapsed, success);
-        self.metrics.whole.record(self.started.elapsed(), success);
+        self.metrics
+            .complete
+            .record(self.started.elapsed(), success);
         self.finished = true;
     }
 
@@ -175,8 +167,7 @@ impl ResponseProfile {
 impl Drop for ResponseProfile {
     fn drop(&mut self) {
         if !self.finished {
-            self.metrics.endpoint.record(self.headers_elapsed, false);
-            self.metrics.whole.record(self.started.elapsed(), false);
+            self.metrics.complete.record(self.started.elapsed(), false);
         }
     }
 }
@@ -185,9 +176,7 @@ impl Drop for ResponseProfile {
 impl Drop for ProfileAttempt {
     fn drop(&mut self) {
         if !self.finished {
-            let elapsed = self.started.elapsed();
-            self.metrics.endpoint.record(Duration::ZERO, false);
-            self.metrics.whole.record(elapsed, false);
+            self.metrics.complete.record(self.started.elapsed(), false);
         }
     }
 }
@@ -209,16 +198,13 @@ mod tests {
         let mut response = ResponseProfile {
             metrics,
             started: Instant::now(),
-            headers_elapsed: Duration::from_millis(1),
             finished: false,
         };
 
         response.finish(true);
         response.finish(false);
 
-        assert_eq!(metrics.endpoint.snapshot().total, 1);
-        assert_eq!(metrics.endpoint.snapshot().failure, 0);
-        assert_eq!(metrics.whole.snapshot().total, 1);
-        assert_eq!(metrics.whole.snapshot().failure, 0);
+        assert_eq!(metrics.complete.snapshot().total, 1);
+        assert_eq!(metrics.complete.snapshot().failure, 0);
     }
 }

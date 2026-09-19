@@ -119,8 +119,8 @@ impl RequestBuilder {
             .map(|inner| Request::new(inner, self.profile))
     }
 
-    /// Sends one logical request. The endpoint timing is captured at response
-    /// headers and the `all_` timing completes when the response body reaches EOF.
+    /// Sends one logical request. Timing completes when the response body
+    /// reaches EOF.
     /// Transport/body errors and cancellation are failures. HTTP status codes
     /// alone do not mark the transport request as failed, matching api-commons.
     ///
@@ -128,7 +128,12 @@ impl RequestBuilder {
     ///
     /// Returns a reqwest error when building or sending the request fails.
     pub async fn send(self) -> Result<Response> {
-        self.profile.send(self.inner).await
+        #[cfg(feature = "slow-log")]
+        let observation = crate::slow_log::Observation::builder(&self.inner);
+        let result = self.profile.send(self.inner).await;
+        #[cfg(feature = "slow-log")]
+        observation.finish(&result);
+        result
     }
 
     pub fn try_clone(&self) -> Option<Self> {
