@@ -16,7 +16,8 @@ bytes = "1"
 http-types = { package = "http", version = "1" }
 reqwest = { version = "0.12.28", default-features = false, features = ["http2", "rustls-tls"] }
 serde = "1"
-brz-metrics = { package = "brz-metrics", optional = true, version = "=0.0.5" }
+brz-metrics = { package = "brz-metrics", version = "=0.0.6", optional = true }
+tracing = { version = "0.1", optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
@@ -28,6 +29,7 @@ json = ["reqwest/json"]
 gzip = ["reqwest/gzip"]
 brotli = ["reqwest/brotli"]
 deflate = ["reqwest/deflate"]
+slow-log = ["dep:tracing"]
 
 [lints.rust]
 unsafe_code = "forbid"
