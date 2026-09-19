@@ -32,11 +32,10 @@ deflate = ["reqwest/deflate"]
 slow-log = ["dep:tracing"]
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
 
 [lib]
 name = "brz_http"
