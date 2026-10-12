@@ -121,7 +121,7 @@ async fn request_records_only_the_body_complete_metric() {
     assert_eq!(complete_snapshot.success, 1);
     assert_eq!(complete_snapshot.failure, 0);
     assert!(
-        complete_snapshot.elapsed_ns >= 50_000_000,
+        complete_snapshot.elapsed_us >= 50_000,
         "HTTP timing must include response-body consumption"
     );
     server.await.unwrap();
