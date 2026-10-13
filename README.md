@@ -68,10 +68,10 @@ let client = Client::builder()
 Enable the optional feature in the consuming crate:
 
 ```toml
-brz-http = "0.0.5"
+brz-http = { version = "0.0.10", features = ["metrics"] }
 ```
 
-Creating an `Endpoint` eagerly registers one ProfileUtil-compatible row:
+Creating an `Endpoint` eagerly registers one cumulative row:
 
 - `HTTP`, name `<scheme>://<host>/<path>`, slow threshold 200 ms.
 
@@ -114,5 +114,5 @@ library name. Existing explicit dependency aliases remain supported.
 
 ```toml
 [dependencies]
-brz-http = "0.0.5"
+brz-http = "0.0.10"
 ```

@@ -65,7 +65,7 @@ async fn endpoints_on_one_client_reuse_the_origin_pool() {
 #[cfg(feature = "metrics")]
 #[tokio::test]
 async fn request_records_only_the_body_complete_metric() {
-    use brz_metrics::Metric;
+    use brz_metrics::{MetricType, TimingMetric};
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap();
@@ -98,7 +98,7 @@ async fn request_records_only_the_body_complete_metric() {
             metric_name.clone(),
         )
         .unwrap();
-    let complete_metric = Metric::http_all(&metric_name);
+    let complete_metric = TimingMetric::new(MetricType::HttpAll, &metric_name);
     let response = endpoint.get().send().await.unwrap();
     assert_eq!(response.status(), 503);
     assert_eq!(complete_metric.snapshot().total, 0);

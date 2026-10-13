@@ -4,14 +4,14 @@ use reqwest::Url;
 use std::time::Instant;
 
 #[cfg(feature = "metrics")]
-use brz_metrics::Metric;
+use brz_metrics::{MetricType, TimingMetric};
 
 use crate::response::Response;
 
 #[cfg(feature = "metrics")]
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ProfileMetrics {
-    complete: Metric,
+    complete: TimingMetric,
 }
 
 #[cfg(not(feature = "metrics"))]
@@ -32,7 +32,7 @@ impl ProfileMetrics {
     #[cfg(feature = "metrics")]
     pub(crate) fn for_name(name: &str) -> Self {
         Self {
-            complete: Metric::http_all(name),
+            complete: TimingMetric::new(MetricType::HttpAll, name),
         }
     }
 
