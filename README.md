@@ -68,7 +68,7 @@ let client = Client::builder()
 Enable the optional feature in the consuming crate:
 
 ```toml
-brz-http = { version = "0.0.12", features = ["metrics"] }
+brz-http = { version = "0.0.13", features = ["metrics"] }
 ```
 
 Creating an `Endpoint` eagerly registers one cumulative row:
@@ -114,5 +114,5 @@ library name. Existing explicit dependency aliases remain supported.
 
 ```toml
 [dependencies]
-brz-http = "0.0.12"
+brz-http = "0.0.13"
 ```
